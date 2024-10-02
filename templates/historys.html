@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styleh.css">
+    <title>Order History</title>
+</head>
+<body>
+    <h2>Order History</h2>
+    <div id="history"></div>
+
+    <script>
+        fetch('http://127.0.0.1:5000/history')
+            .then(response => response.json())
+            .then(data => {
+                let historyContainer = document.getElementById('history');
+                if (data.length > 0) {
+                    data.forEach(order => {
+                        let orderDiv = document.createElement('div');
+                        orderDiv.innerHTML = `
+                            <h3>Customer: ${order.username}</h3>
+                            <p>Email: ${order.email}</p>
+                            <p>Mobile: ${order.mobile}</p>
+                            <p>Hours: ${order.hours}</p>
+                            <p>Pages: ${order.pages}</p>
+                            <p>Education: ${order.education}</p>
+                            <p>PDF Path: ${order.pdf_path}</p>
+                            <button onclick="printReceipt('${order._id}')">Print Receipt</button>
+                        `;
+                        historyContainer.appendChild(orderDiv);
+                    });
+                } else {
+                    historyContainer.innerHTML = '<p>No submissions found.</p>';
+                }
+            })
+            .catch(error => console.error('Error fetching history:', error));
+        
+        function printReceipt(id) {
+            // Logic to print receipt or open a new window for printing
+            alert('Print receipt for ID: ' + id);
+        }
+    </script>
+</body>
+</html>
