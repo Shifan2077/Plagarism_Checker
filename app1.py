@@ -7,6 +7,7 @@ from reportlab.pdfgen import canvas
 from pymongo import MongoClient  # MongoDB driver
 import os
 import io
+from bson import ObjectId
 
 app = Flask(__name__)
 app.secret_key = '5f62c34db0967ddf3a06a8c82a787d8009bb4aed69511342'  # Required for session management and flash messages
@@ -43,82 +44,61 @@ ADMIN_PASSWORD = "password123"
 def submit_form():
     try:
         # Get form data
-        username = request.form['username']
-        email = request.form['email']
-        mobile = request.form['mobile']
-        hours = request.form['hours']
-        pages = request.form['pages']
-        education = request.form['education']
-        payment = request.form['payment']  # Assuming payment amount is sent with form data
+        username = request.form.get('username')
+        email = request.form.get('email')
+        mobile = request.form.get('mobile')
+        hours = request.form.get('hours')
+        pages = request.form.get('pages')
+        education = request.form.get('education')
 
-        # Get file data
-        if 'pdf' not in request.files:
-            return jsonify({'success': False, 'message': 'No file part in the request'}), 400
+        # Get the uploaded PDF file and payment screenshot
+        pdf_file = request.files.get('pdf')
+        payment_screenshot = request.files.get('payment')
 
-        pdf = request.files['pdf']
-        if pdf.filename == '':
-            return jsonify({'success': False, 'message': 'No file selected'}), 400
+        if pdf_file and pdf_file.filename != '':
+            pdf_filename = secure_filename(pdf_file.filename)
+            pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
+            pdf_file.save(pdf_path)
+        else:
+            return jsonify({'success': False, 'message': 'PDF file is required'}), 400
 
-        # Validate the file type
-        if not pdf.filename.endswith('.pdf'):
-            return jsonify({'success': False, 'message': 'Only PDF files are allowed'}), 400
+        if payment_screenshot and payment_screenshot.filename != '':
+            payment_filename = secure_filename(payment_screenshot.filename)
+            payment_path = os.path.join(app.config['UPLOAD_FOLDER'], payment_filename)
+            payment_screenshot.save(payment_path)
+        else:
+            return jsonify({'success': False, 'message': 'Payment screenshot is required'}), 400
 
-        # Secure the filename and save the file
-        filename = secure_filename(pdf.filename)
-        pdf.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        # Insert the data into the MongoDB collection and get the inserted document ID
+        result = submissions_collection.insert_one({
+            'username': username,
+            'email': email,
+            'mobile': mobile,
+            'hours': hours,
+            'pages': pages,
+            'education': education,
+            'pdf_path': pdf_path,
+            'payment_path': payment_path
+        })
+        submission_id = str(result.inserted_id)  # Convert ObjectId to string
 
-        # Insert data into MongoDB
-        submission = {
-            "username": username,
-            "email": email,
-            "mobile": mobile,
-            "pdf": filename,
-            "hours": hours,
-            "pages": pages,
-            "education": education,
-            "payment": payment
-        }
-        submissions_collection.insert_one(submission)
-
-        return jsonify({'success': True, 'message': 'Form submitted successfully!'}), 200
-
+        return jsonify({'success': True, 'message': 'Form submitted successfully!', 'submission_id': submission_id}), 200
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({'success': False, 'message': 'Error saving to database'}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-# Route to generate PDF receipt
-@app.route('/generate_receipt/<submission_id>', methods=['GET'])
-def generate_receipt(submission_id):
+# Route to fetch submissions data
+@app.route('/api/submissions', methods=['GET'])
+def get_submissions():
     try:
-        # Fetch submission data from MongoDB
-        submission = submissions_collection.find_one({"_id": submission_id})
-        if not submission:
-            return jsonify({'success': False, 'message': 'Submission not found'}), 404
-
-        username = submission['username']
-        email = submission['email']
-        mobile = submission['mobile']
-        payment = submission['payment']
-
-        # Create a PDF in memory
-        pdf_buffer = io.BytesIO()
-        c = canvas.Canvas(pdf_buffer, pagesize=letter)
-        c.drawString(100, 750, f"Receipt for {username}")
-        c.drawString(100, 730, f"Email: {email}")
-        c.drawString(100, 710, f"Phone: {mobile}")
-        c.drawString(100, 690, f"Payment: ${payment}")
-        c.drawString(100, 670, f"Submission ID: {submission_id}")
-        c.drawString(100, 650, "Thank you for your submission!")
-        c.showPage()
-        c.save()
-
-        pdf_buffer.seek(0)
-
-        return send_file(pdf_buffer, as_attachment=True, download_name=f"receipt_{submission_id}.pdf", mimetype='application/pdf')
-
+        submissions = list(submissions_collection.find({}))
+        # Convert MongoDB ObjectId to string for JSON serialization
+        for submission in submissions:
+            submission['_id'] = str(submission['_id'])
+        return jsonify(submissions), 200
     except Exception as e:
-        print(f"Error: {e}")
-        return jsonify({'success': False, 'message': 'Error generating receipt'}), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 if __name__ == "__main__":
  app.run(port=3000, debug=True)
 

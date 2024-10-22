@@ -89,7 +89,7 @@
     <section id="login">
         <div class="container">
             <h2>Login</h2>
-            <form id="loginForm" action="http://localhost:3000" method="POST" enctype="multipart/form-data">
+            <form id="loginForm" action="http://127.0.0.1:3000/submit_form" method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="username">Username:</label>
                     <input type="text" id="username" name="username" required>
@@ -145,12 +145,17 @@
                     <label for="payment">Upload Payment Screenshot:</label>
                     <input type="file" id="payment" name="payment" accept=".pdf" required>
                 </div> 
-                <button type="submit">Submit</button>
+                <button type="submit" onclick="submitTheForm()">Submit</button>
+                <br></br>
+                <button type="button" onclick="showRecept()">Print</button>
             </form>
-            <div class="receipt">
+            <div class="receipt" id="receiptContainer" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px;">
                 <h3>Receipt</h3>
-                <p>Thank you for your submission!</p>
+                <div id="receiptText"></div>
+                <button onclick="printReceipt()">Print Receipt</button>
+
             </div>
+            
         </div>
     </section>
 
@@ -173,7 +178,7 @@
                         <label for="message">Message:</label>
                         <textarea id="message" name="message" rows="5" required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary" onclick="submitForm()">Send Message</button>
+                    <button type="submit" class="btn btn-primary" >Send Message</button>
                 </form>
             </div>
         </section>
@@ -182,10 +187,102 @@
     </footer>
 </body>
 <script>
-    function submitForm() {
+    function calculatePayment() {
+        var pageRate = 10; // Example rate per page
+        var pages = document.getElementById('pages').value;
+        var totalAmount = pages * pageRate;
+        document.getElementById('paymentAmount').textContent = '₹' + totalAmount;
+    }
+
+    // function showRecept(event) {
+    //     event.preventDefault(); // Prevent form submission to the server for demo purposes
+        
+    //     // Get form values
+    //     var name = document.getElementById('username').value;
+    //     var email = document.getElementById('email').value;
+    //     var mobile = document.getElementById('mobile').value;
+    //     var pages = document.getElementById('pages').value;
+    //     var hours = document.getElementById('hours').value;
+    //     var education = document.getElementById('education').value;
+    //     var paymentAmount = document.getElementById('paymentAmount').textContent;
+
+    //     // Display the receipt content
+    //     document.getElementById('receiptText').innerHTML = `
+    //         <p><strong>Name:</strong> ${name}</p>
+    //         <p><strong>Email:</strong> ${email}</p>
+    //         <p><strong>Mobile:</strong> ${mobile}</p>
+    //         <p><strong>Number of Pages:</strong> ${pages}</p>
+    //         <p><strong>Hours to Get PDF:</strong> ${hours}</p>
+    //         <p><strong>Educational Level:</strong> ${education}</p>
+    //         <p><strong>Total Payment Amount:</strong> ${paymentAmount}</p>
+    //     `;
+
+    //     // Show the receipt container
+    //     document.getElementById('receiptContainer').style.display = 'block';
+    // }
+
+    // window.onload = function() {
+    //     document.getElementById('pages').addEventListener('change', calculatePayment);
+    //     document.getElementById('loginForm').addEventListener('submit', showRecept);
+    // };
+</script>
+<script>
+    function printReceipt() {
+        // Get the content of the receipt container
+        var receiptContent = document.getElementById('receiptContainer').innerHTML;
+        
+        // Save the original page content
+        var originalContent = document.body.innerHTML;
+        
+        // Replace the body content with the receipt content
+        document.body.innerHTML = receiptContent;
+        
+        // Trigger the print dialog
+        window.print();
+        
+        // Restore the original page content after printing
+        document.body.innerHTML = originalContent;
+        
+        // Re-attach event listeners if needed
+        window.onload();
+
+        //hide container after print
+        document.getElementById('receiptContainer').style.display = 'none';
+    }
+</script>
+<script>
+    function showRecept() {
+        // Prevent form submission behavior for the Print button
+        event.preventDefault();
+
+        // Get form values
+        var name = document.getElementById('username').value;
+        var email = document.getElementById('email').value;
+        var mobile = document.getElementById('mobile').value;
+        var pages = document.getElementById('pages').value;
+        var hours = document.getElementById('hours').value;
+        var education = document.getElementById('education').value;
+        var paymentAmount = document.getElementById('paymentAmount').textContent;
+
+        // Display the receipt content
+        document.getElementById('receiptText').innerHTML = `
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Mobile:</strong> ${mobile}</p>
+            <p><strong>Number of Pages:</strong> ${pages}</p>
+            <p><strong>Hours to Get PDF:</strong> ${hours}</p>
+            <p><strong>Educational Level:</strong> ${education}</p>
+            <p><strong>Total Payment Amount:</strong> ${paymentAmount}</p>
+        `;
+
+        // Show the receipt container
+        document.getElementById('receiptContainer').style.display = 'block';
+    }
+
+    function submitTheForm() {
         const formData = new FormData(document.getElementById('loginForm'));
 
-        fetch('http://localhost:3000', {
+        fetch('http://127.0.0.1:3000/submit_form', {
             method: 'POST',
             body: formData
         })
@@ -205,10 +302,10 @@
     }
 
     document.getElementById('loginForm').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent default submission
-        submitForm(); // Call submit function
-    });
-</script>
+    event.preventDefault(); // Prevent form submission
+    submitTheForm();
+});
 
+</script>
 
 </html>
